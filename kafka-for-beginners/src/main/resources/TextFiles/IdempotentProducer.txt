@@ -1,0 +1,11 @@
+By setting "enable.idempotence=true" on producer side we can guarantee ordering and no duplicates without sacrificing
+parallel behavior i.e. we can still have "max.in.flight.requests.per.connection" set to greater than 0 but less than
+or equal to 5. This means up to 5 requests can be sent at a time and producer waits for the ack from each of these
+5 requests.
+
+Each kafka producer instance will have an ID called PID. And each message produced by this producer will have an Id
+called Sequence ID. When a partition receives a message it will see the sequence and producer ID, and it will commit
+the message only of the Sequence ID is one greater than the already committed message. If it is not an exception is thrown.
+Producer will retry again with the same sequence Id and producer Id until the message gets committed.
+
+This way we can have a buffer of more than 0 and less than or equal to 5 and still achieve order and no duplicates.

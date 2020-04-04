@@ -1,0 +1,9 @@
+If the producer starts sending messages faster than the broker can process there will be exceptions thrown.
+We can handle fast produces using the following settings.
+
+1. buffer.memory : The default value is 32MB. This is the buffer size of the .send() method.
+If the producer starts calling the send method fast enough it will fill up this buffer.
+Once the buffer is full the send will no longer be an async call. .send() calls after the buffer size is full are sync.
+
+3. After .send() is called synchronously producer wait for "max.block.ms" time before throwing an exception.
+The default value of "max.block.ms" is 60000 i.e. 60s

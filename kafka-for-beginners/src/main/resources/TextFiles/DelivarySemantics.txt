@@ -1,0 +1,14 @@
+1. At Most once:
+kafka consumer reads data in batches.
+A consumer reads a batch and commits the last message’s offset of the batch before the messages are processed.
+If during processing the consumer goes down and it comes back up, the unprocessed messages are lost as the offset
+is already committed, the consumer will start reading messages from the new offset.
+
+2. At Least once:
+When the consumer starts processing the next batch. It processes messages one and two but does not commit the offset of
+second batch as there are still 3 more messages to be processed. After the second message if the consumer goes down
+and comes back up again, it will start processing the messages from one again. This leads to the messages one and two
+being processed again. If the processing of the messages are not idempotent this leads to duplication of messages.
+
+3. Exactly once:
+This is only for kafka to kafka work flows.

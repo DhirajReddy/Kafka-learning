@@ -1,0 +1,2 @@
+Kafka connect is a bunch of open source libraries used to pull data in to kafka or pull data from kafka.
+basically it is highly optimized and simplified Producer and Consumer api.

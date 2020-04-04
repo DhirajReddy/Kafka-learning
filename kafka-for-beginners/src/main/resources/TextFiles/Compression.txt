@@ -1,0 +1,20 @@
+1. Compression is enabled on producer side by setting "compression.type"
+2. The values are snappy, gzip, lz4 etc.
+3. snappy and lz4 has good speed to compression ratio
+4. gzip has very good compression but it is slow as well
+5. Compression happens at batch level
+6. Bigger the batch higher the compression
+7. To increase throughput we can increase the "batch.size", increase "linger.ms"
+
+
+When the producer sends a message, the message is sent immediately as "linger.ms=0" by default.
+Now the producer waits for ack. In the waiting time if the producer receives more messages to send,
+it will batch them and send the batch as a whole. Why increase the linger.ms to say 5.
+Producer waits for 5 ms after a message is ready to be sent. During this time if there are more messages being
+produced to send, these messages will be batched. Thus increasing the chances of messages being sent as a batch.
+
+As compression applies on the batch as a whole and as batch size increases the compression ratio also increases,
+We get increased throughput.
+
+If the size of messages in KB in the batch reaches the batch.size(default value is 16KB) value then the producer will not wait for the linger.ms
+timer to expire, it will send the batch right away.

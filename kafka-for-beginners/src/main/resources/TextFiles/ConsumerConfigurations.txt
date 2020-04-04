@@ -1,0 +1,64 @@
+1. Consumer is a poll model i.e. it asks the broker if there are any request to be fetched.
+Poll method takes in duration as a parameter. The broker if it has the messages returns them immediately,
+if the broker does not have any messages it will wait for the "duration" time and return an empty list after that.
+If during the waiting period if the broker receives messages from the producer it will return the messages immediately.
+
+This polling strategy can we controlled using the following configurations:
+
+1. fetch.min.bytes: Default value id 1. The minimum size of data that has to be fetched for every poll request.
+Helps improve throughput as the number of requests can decrease
+
+2. max.poll.records: Default value is 500. The maximum records that can be received per poll request. If every poll
+request is receiving 500 records then it makes sense to increase this settings are the messages are arriving faster in
+the broker.
+
+3. max.partition.fetch.bytes: the default value is 1 MB. The maximum data that can be read per partition during
+consumption. If we read from a large number of partitions and we can afford increased memory usage, we can increase
+this setting.
+
+4. fetch.max.bytes: Default value is 50 MB. The maximum data size that can be read by a consumer on every fetch or poll
+request.
+
+Offset commit strategies:
+
+1. enable.auto.commit: default value is true. We will commit immediately and process the polled messages.
+Only after all the messages are processed will poll again. In other words we process the records synchronously.
+If this is set to false we disable the ability to commit automatically we have to manually commit when ever we deem
+it appropriate.
+
+2. auto.commit.interval.ms: The default value is 5000. The offsets are committed automatically after every 5 seconds,
+if the auto commit is enabled. For each poll method call this timer is reset. If there is no poll method call in the
+next 5 seconds the offset will be committed. If there is a poll method call before the timer expires the previous
+offset is committed immediately before the actual fetching of messages.
+If the processing of the messages are not done synchronously the the delivery semantic will be "At Most Once".
+Because the offset will be automatically committed before the message processing is complete.
+
+The safe way is to disable auto commit i.e. set enable.auto.commit=false and then do a synchronous batch processing.
+After the processing is complete we explicitly commit the offset. by using consumer.commitSync()
+
+
+Offset reset configuration:
+
+1. If the consumer is down for some days and when it is brought back to life. we can use the auto.offset.reset config
+to determine from where to start receiving messages. The values acceptable are "earliest", "latest" and "none".
+"none value throws exception". Earliest starts reading the messages from the beginning, latest only reads new messages.
+
+2. offset.retention.minutes: This configuration is used to set when the kafka brokers clear out the consumer offset
+stored in them. default is 7 days.
+
+We can use the following command to reset the offsets
+kafka-consumer-groups.sh --execute --bootstrap-server localhost:9092 --group console-twitter-consumer
+--topic twitter_tweets --reset-offsets --to-earliest
+
+Each consumer polls the kafka broker for messages, consumers also ping heart beats to consumer coordinator.
+It is through these mechanism that the kafka cluster will know if the consumer is alive or dead. If it is deal
+kafka cluster needs to be rebalanced.
+We can change the time intervals between subsequent polls and heartbeats before which consumer is considered dead.
+session.timeout.ms: default is 10 seconds. This is the heart beat sent to broker. If broker does not receive a heart
+beat from the consumer in 10 seconds after the previous heart beat. Consumer is considered dead.
+
+heartbeat.interval.ms: default is 3 seconds and is generally one third of the session timeout. this is the heart beat
+sent to the consumer coordinator.
+
+max.poll.interval.ms: Default is 5 minutes. The max time gap allowed between two successive polls. If the subsequent
+poll is later than 5 minutes the broker would have already considered the consumer dead.
