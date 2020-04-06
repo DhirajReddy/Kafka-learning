@@ -1,0 +1,76 @@
+# Introduction
+1. Kafka streams is a java API that is shipped with the Kafka library
+2. It provides Exactly Once capability out of the box
+3. It does not do a batch processing unlin spark. Therefore it is true streaming, meaning it processes the messages one
+ at a time.
+4. There is no need to create a separate cluster
+5. Kafka streams is from kafka to kafka. Get data from a topic in kafka cluster process the data and put the processed
+data back into kafka on a different topic
+
+# Configurations:
+1. application-id: This is only specific to streams API.
+This will be equal to the
+- group id
+- default value for client id prefix.
+- prefix of internal change log topics.
+
+2. default.key.serde and default.value.serde should be set as it lets the streams API understand how to translate
+byte into meaningful data and vice versa.
+
+# Streams Internal Topic
+1. While performing aggregation and transformations on the data streams api will create internal topics inorder to
+store temporary states and perform calculations on them when there is new data.
+- Repartitioning Topic: When we perform transformations on the keys, the intermediate states are stores in this topic
+- ChangeLog Topic: When we perform aggregations the state is stored in this internal topic
+All the internal topics are prefixed by default with the application-id
+
+# Scaling
+When a stream App is launched it launches with an "application id". Application id is nothing but the consumer group id.
+So if we run multiple instances of the same stream app then we add multiple consumers to the same consumer group.
+When a consumer is added or deleted from a consumer group kafka does a re balancing. If there are three partitions we
+can up to 3 consumers to a consumer group. So the load is shared among all the consumers. The processing of stream app
+is also shared among the added consumers by distributing tasks among them. If a single consumer is performing all the 4
+tasks in a pipeline, by adding one more consumer to the consumer group the re balancing will make sure that the old one
+will have two tasks and the new one will have two tasks.
+So scaling is graceful and just a matter of adding new consumers to the consumer group i.e. simply increasing the
+instances of the application.
+
+# KStream:
+KStream just does inserts, old values are not modified, entries with the same key are just appended to the stream.
+
+# KTable:
+KTable does insert, update and a delete. Old entries are modified if there is a new value with the same key. Null value is treated a
+special case. If there is a key will a null value then the entry with that key is deleted.
+
+Use KStream when there is partial info in each message. Or the messages are transactional.
+Use KTable when we need a database table like structure, where every update is self sufficient i.e the update
+does not depend on what the value from for the same key before in the topic.
+
+Use KStream when reading from a topic that is not compacted.
+Use KTable when reading from a topic that is log compacted.
+
+Aggregation on KStreams has only an adder as KStreams only does an insert.
+Aggregation on KTable has an adder and subtract as KTable supports insert, update and delete.
+That is the reason a group by followed by a count has only increase operation on KStream where as KTable offers
+decrease as well.
+
+# Repartitioning
+Any operation that can possibly change the key will mark the stream for repartitioning.
+Operations like will mark the stream for repartitioning are Map, FlatMap and SelectKey.
+However the operations MapValues and FlatMapValues will not trigger a repartition.
+Repartitioning is done behind the scenes seamlessly. When a key is changed the data need to be redistributed to all
+the Kafka streams applications this is called repartitioning and it incurs performance overhead.
+
+# Exactly Once in Kafka
+Exactly once ensures that any message is processed only once and when the processed message is put back in kafka it is
+put only once. Any duplicate values are de duplicated by the kafka streams API.
+Exactly once is only available in Kafka to Kafka i.e. Kafka streams.
+Kafka streams acts as both producer and a consumer. There might be networks failures when the consumer commits offsets
+or when the producer is about to receive acknowledgements. In the former case the message will be read again and hence
+duplicate processing and in the later case producer will publish the same values again thus duplicate values.
+kafka streams handles both the scenarios by use of Transaction Id + Producer Id + Sequence number.
+When a producer or consumer goes down and bought back again it's producer or consumer id changes, but for the same
+producer and consumer the transaction id will be the same. When Kafka sees that the same transaction id and sequence
+number is not more than one it simply sends the ack with out committing duplicate data.
+Exactly once is very important for non idempotent operations like computing the balance after a series of transactions.
+The balance is not idempotent as with each transaction the value changes.
